@@ -33,4 +33,20 @@ function drawScreen(context) {
     context.arc(400, 400, 100, (Math.PI / 180) * 0, (Math.PI / 180) * 240, false);
     context.stroke();
     context.closePath()
+
+    context.beginPath();
+    context.moveTo(0, 0);
+    context.lineTo(100, 200);
+    context.arcTo(350, 350, 100, 100, 50)
+
+    //Bezier Curves
+    context.strokeStyle = 'blue';
+    context.moveTo(600, 300);
+    context.quadraticCurveTo(500, 350, 600, 400);
+
+    context.moveTo(150,300);
+    context.bezierCurveTo(160,400,200,175,300,300);
+
+    context.stroke();
+    context.closePath()
 }
