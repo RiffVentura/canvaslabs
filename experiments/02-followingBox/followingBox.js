@@ -101,7 +101,6 @@ function initBox() {
         color: 'red',
         speed: 3,
         update: function () {
-            console.log(boxState)
             if(boxState === 'ARRIVED') {
                 return;
             }
@@ -155,8 +154,6 @@ function lengthVec2(vec2) {
 }
 
 function equalsVec2(vecA,vecB) {
-    console.log(vecA, vecB);
-
     const THRESHOLD = 2;
 
     const closeX = THRESHOLD >= Math.abs(vecA.x - vecB.x)
