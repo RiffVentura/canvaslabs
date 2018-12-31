@@ -80,9 +80,11 @@ class GameWorld {
         };
         this.playerLine = 450;
         this.player = new Player(450, this.playerLine, 50, 50, this);
+        this.fallBox = new FallingBox(350, 50, 25, 50, this);
     }
     update(dt) {
         this.player.update(dt);
+        this.fallBox.update(dt);
     }
     render(ctx) {
         ctx.fillStyle = 'white';
@@ -96,10 +98,17 @@ class GameWorld {
         ctx.stroke();
         ctx.closePath();
 
+        this.fallBox.render(ctx);
         this.player.render(ctx);
     }
     getLimits() {
-        return { 'left': this.bounds.x, 'right': this.bounds.x + this.bounds.w };
+        return { 
+            'left': this.bounds.x, 
+            'right': this.bounds.x + this.bounds.w,
+            'up': this.bounds.y,
+            'down': this.bounds.y + this.bounds.h,
+
+        };
     }
 }
 
@@ -113,10 +122,11 @@ class Entity {
         this.color = 'black';
         this.dx = 0;
         this.dy = 0;
-        this.speed = 1000;
+        this.speed = 1;
     }
     update(dt) {
-
+        this.x += this.dx * dt * this.speed;
+        this.y += this.dy * dt * this.speed;
     }
     render(ctx) {
         ctx.fillStyle = this.color;
@@ -129,6 +139,7 @@ class Player extends Entity {
     constructor(x, y, w, h, gameWorld) {
         super(x, y, w, h, gameWorld);
         this.color = 'blue';
+        this.speed = 1000;
     }
     update(dt) {
         this.x += this.dx * dt * this.speed;
@@ -139,5 +150,22 @@ class Player extends Entity {
         if (this.x + this.width / 2 > limits.right) {
             this.x = limits.right - this.width / 2;
         }
+    }
+}
+
+class FallingBox extends Entity {
+    constructor(x, y, w, h, gameWorld) {
+        super(x, y, w, h, gameWorld);
+        this.color = 'red';
+        this.dy = 1;
+        this.speed = 500;
+    }
+    update(dt) {
+        Entity.prototype.update.call(this, dt);
+        const limits = this.gameWorld.getLimits();
+        if (this.y + this.height / 2 > limits.down) {
+            this.y = limits.up - this.width / 2;
+        }
+
     }
 }
