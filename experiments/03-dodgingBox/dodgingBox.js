@@ -11,7 +11,7 @@ class Game {
         this.height = canvasNode.height;
         this.width = canvasNode.width;
         this.lastTimestamp = performance.now();
-        this.frameStep = 1 / 60;
+        this.frameStep = 1 / 120;
         this.gameWorld = new GameWorld(this);
         this.inputController = {
             'left': 0,
@@ -79,12 +79,27 @@ class GameWorld {
             h: 600
         };
         this.playerLine = 450;
+
         this.player = new Player(450, this.playerLine, 50, 50, this);
-        this.fallBox = new FallingBox(350, 50, 25, 50, this);
+
+        this.fallBoxes= [];
+        this.maxFallBox = 10;
+        this.startLineNextBox = 100
+
+        this.prepareLevel();
     }
     update(dt) {
         this.player.update(dt);
-        this.fallBox.update(dt);
+        const firstBox = this.fallBoxes[0];
+        for (let ind = 0; ind < this.fallBoxes.length; ind++) {
+            this.fallBoxes[ind].update(dt);           
+        }
+        for (let ind = 1; ind < this.fallBoxes.length; ind++) {
+            if(this.fallBoxes[ind].dy === 0 && this.fallBoxes[ind-1].y > (this.bounds.y + this.startLineNextBox)) {
+                this.fallBoxes[ind].dy = 1;
+                break;
+            }            
+        }
     }
     render(ctx) {
         ctx.fillStyle = 'white';
@@ -98,7 +113,9 @@ class GameWorld {
         ctx.stroke();
         ctx.closePath();
 
-        this.fallBox.render(ctx);
+        for (let ind = 0; ind < this.fallBoxes.length; ind++) {
+            this.fallBoxes[ind].render(ctx);     
+        }
         this.player.render(ctx);
     }
     getLimits() {
@@ -109,6 +126,16 @@ class GameWorld {
             'down': this.bounds.y + this.bounds.h,
 
         };
+    }
+    prepareLevel() {
+
+        const startPointY = this.bounds.y - 200;
+        for (let index = 0; index < this.maxFallBox; index++) {
+            let startPointX = this.bounds.x + Math.random() * (this.bounds.w - 25) + 25;
+            this.fallBoxes[index] = new FallingBox(startPointX, startPointY, 25, 50, this);
+            
+        }
+        this.fallBoxes[0].dy = 1;
     }
 }
 
@@ -157,14 +184,15 @@ class FallingBox extends Entity {
     constructor(x, y, w, h, gameWorld) {
         super(x, y, w, h, gameWorld);
         this.color = 'red';
-        this.dy = 1;
         this.speed = 500;
+        this.offScreenOffset = 300;
     }
     update(dt) {
         Entity.prototype.update.call(this, dt);
         const limits = this.gameWorld.getLimits();
-        if (this.y + this.height / 2 > limits.down) {
-            this.y = limits.up - this.width / 2;
+        if (this.y + this.height / 2  > limits.down + this.offScreenOffset) {
+            this.y = limits.up - this.width / 2 - this.offScreenOffset;
+            this.x = limits.left + Math.random() * (limits.right - limits.left - this.width/2) + this.width/2;
         }
 
     }
