@@ -177,10 +177,8 @@ class Entity {
         }
     }
     isColliding(otherHitbox) {
-        return this.x < otherHitbox.x + otherHitbox.width &&
-        this.x + this.width > otherHitbox.x &&
-        this.y < otherHitbox.y + otherHitbox.height &&
-        this.height + this.y > otherHitbox.y;
+        return (this.x < otherHitbox.x + otherHitbox.width || this.x + this.width > otherHitbox.x) &&
+        (this.y < otherHitbox.y + otherHitbox.height || this.height + this.y > otherHitbox.y);
     }
 }
 
