@@ -32,9 +32,10 @@ class Game {
     }
     start() {
         this.bindInputs();
+        // window.requestAnimationFrame(this.gameLoopMinimumStep.bind(this));
         window.requestAnimationFrame(this.gameLoop.bind(this));
     }
-    gameLoop(timestamp) {
+    gameLoopMinimumStep(timestamp) {
         let deltaTime = Math.min(1, (timestamp - this.lastTimestamp) / 1000);
         this.lastTimestamp = timestamp;
         this.handleInput();
@@ -42,6 +43,14 @@ class Game {
             deltaTime -= this.frameStep;
             this.update(this.frameStep);
         }
+        this.update(deltaTime);
+        this.render();
+        window.requestAnimationFrame(this.gameLoopMinimumStep.bind(this));
+    }
+    gameLoop(timestamp) {
+        let deltaTime = Math.min(1, (timestamp - this.lastTimestamp) / 1000);
+        this.lastTimestamp = timestamp;
+        this.handleInput();
         this.update(deltaTime);
         this.render();
         window.requestAnimationFrame(this.gameLoop.bind(this));
@@ -82,7 +91,7 @@ class GameWorld {
 
         this.player = new Player(450, this.playerLine, 50, 50, this);
 
-        this.fallBoxes= [];
+        this.fallBoxes = [];
         this.maxFallBox = 10;
         this.startLineNextBox = 100
 
@@ -92,22 +101,26 @@ class GameWorld {
         this.player.update(dt);
         const firstBox = this.fallBoxes[0];
         for (let ind = 0; ind < this.fallBoxes.length; ind++) {
-            this.fallBoxes[ind].update(dt);           
+            this.fallBoxes[ind].update(dt);
         }
         for (let ind = 1; ind < this.fallBoxes.length; ind++) {
-            if(this.fallBoxes[ind].dy === 0 && this.fallBoxes[ind-1].y > (this.bounds.y + this.startLineNextBox)) {
+            if (this.fallBoxes[ind].dy === 0 && this.fallBoxes[ind - 1].y > (this.bounds.y + this.startLineNextBox)) {
                 this.fallBoxes[ind].dy = 1;
                 break;
-            }            
+            }
         }
         const playerHitbox = this.player.getHitbox();
         let anyCollision = false;
         for (let ind = 0; ind < this.fallBoxes.length; ind++) {
-            if(this.fallBoxes[ind].isColliding(playerHitbox)) {
+            if (this.fallBoxes[ind].isColliding(playerHitbox)) {
                 anyCollision = true;
-            }            
+            }
         }
-        this.player.isColliding = anyCollision;
+        if (anyCollision) {
+            this.player.getHit();
+        } else {
+            this.player.recover();
+        }
     }
     render(ctx) {
         ctx.fillStyle = 'white';
@@ -122,13 +135,13 @@ class GameWorld {
         ctx.closePath();
 
         for (let ind = 0; ind < this.fallBoxes.length; ind++) {
-            this.fallBoxes[ind].render(ctx);     
+            this.fallBoxes[ind].render(ctx);
         }
         this.player.render(ctx);
     }
     getLimits() {
-        return { 
-            'left': this.bounds.x, 
+        return {
+            'left': this.bounds.x,
             'right': this.bounds.x + this.bounds.w,
             'up': this.bounds.y,
             'down': this.bounds.y + this.bounds.h,
@@ -141,7 +154,6 @@ class GameWorld {
         for (let index = 0; index < this.maxFallBox; index++) {
             let startPointX = this.bounds.x + Math.random() * (this.bounds.w - 25) + 25;
             this.fallBoxes[index] = new FallingBox(startPointX, startPointY, 25, 50, this);
-            
         }
         this.fallBoxes[0].dy = 1;
     }
@@ -167,18 +179,26 @@ class Entity {
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
 
+        // DEBUG BOUNDING BOX
+        // ctx.fillStyle = 'black';
+        // ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2,4,4);
+        // ctx.fillRect(this.x - this.width / 2 +this.width, this.y - this.height / 2 + this.height,4,4);
+        // ctx.fillRect(this.x - this.width / 2 +this.width, this.y - this.height / 2,4,4);
+        // ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2+ this.height,4,4);
     }
     getHitbox() {
         return {
-            'x': this.x - this.width/2,
-            'y': this.y - this.height/2,
+            'x': this.x - this.width / 2,
+            'y': this.y - this.height / 2,
             'width': this.width,
             'height': this.height,
         }
     }
     isColliding(otherHitbox) {
-        return (this.x < otherHitbox.x + otherHitbox.width || this.x + this.width > otherHitbox.x) &&
-        (this.y < otherHitbox.y + otherHitbox.height || this.height + this.y > otherHitbox.y);
+        let boundsX = this.x - this.width / 2;
+        let boundsY = this.y - this.height / 2;
+        return boundsX + this.width >= otherHitbox.x && boundsX <= otherHitbox.x + otherHitbox.width &&
+            boundsY + this.height >= otherHitbox.y && boundsY <= otherHitbox.y + otherHitbox.height;
     }
 }
 
@@ -191,6 +211,7 @@ class Player extends Entity {
         this.recentlyHit = false;
         this.cooldownTime = 0;
         this.hitCooldownTimer = 1;
+        this.state = "NORMAL";
     }
     update(dt) {
         this.x += this.dx * dt * this.speed;
@@ -201,17 +222,29 @@ class Player extends Entity {
         if (this.x + this.width / 2 > limits.right) {
             this.x = limits.right - this.width / 2;
         }
-
-        if(this.isColliding && this.cooldownTime === 0) {
-            this.cooldownTime = this.hitCooldownTimer;
-            this.color = 'rgb('+Math.random()*255+','+Math.random()*255+','+Math.random()*255+')';
+        // if (this.isColliding && this.cooldownTime === 0) {
+        //     this.cooldownTime = this.hitCooldownTimer;
+        //     this.color = 'rgb(' + Math.random() * 255 + ',' + Math.random() * 255 + ',' + Math.random() * 255 + ')';
+        // }
+        // if (this.cooldownTime > 0) {
+        //     this.cooldownTime -= dt;
+        // } else {
+        //     this.cooldownTime = 0;
+        // }
+    }
+    getHit() {
+        if (this.state !== "NORMAL") {
+            return;
         }
-        if(this.cooldownTime > 0 ) {
-            this.cooldownTime -= dt;
-        } else {
-            this.cooldownTime = 0;
+        this.state = "HURT";
+        this.color = 'rgb(' + Math.random() * 255 + ',' + Math.random() * 255 + ',' + Math.random() * 255 + ')';
+    }
+    recover() {
+        if (this.state === "NORMAL") {
+            return;
         }
-
+        this.state = "NORMAL";
+        this.color = 'rgb(0,0,255)';
     }
 }
 
@@ -225,9 +258,9 @@ class FallingBox extends Entity {
     update(dt) {
         Entity.prototype.update.call(this, dt);
         const limits = this.gameWorld.getLimits();
-        if (this.y + this.height / 2  > limits.down + this.offScreenOffset) {
+        if (this.y + this.height / 2 > limits.down + this.offScreenOffset) {
             this.y = limits.up - this.width / 2 - this.offScreenOffset;
-            this.x = limits.left + Math.random() * (limits.right - limits.left - this.width/2) + this.width/2;
+            this.x = limits.left + Math.random() * (limits.right - limits.left - this.width / 2) + this.width / 2;
         }
 
     }
